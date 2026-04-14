@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User's skin profile and basic information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "User's display name" },
+        "type": { "type": "array", "items": { "type": "string" }, "description": "List of skin types (oily, dry, etc.)" },
+        "concerns": { "type": "array", "items": { "type": "string" }, "description": "List of skin concerns (acne, dullness, etc.)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created" }
+      },
+      "required": ["name", "type", "concerns", "createdAt"]
+    },
+    "RoutineItem": {
+      "title": "RoutineItem",
+      "description": "A single product in a user's skincare routine",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who owns this item" },
+        "name": { "type": "string", "description": "Product name" },
+        "brand": { "type": "string", "description": "Product brand" },
+        "completed": { "type": "boolean", "description": "Whether the product has been used today" },
+        "type": { "type": "string", "enum": ["morning", "night"], "description": "The routine type" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the item was added" }
+      },
+      "required": ["userId", "name", "brand", "completed", "type", "createdAt"]
+    },
+    "SkinAnalysis": {
+      "title": "SkinAnalysis",
+      "description": "A skin analysis result from a photo",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who owns this analysis" },
+        "photoUrl": { "type": "string", "description": "The URL of the uploaded photo" },
+        "skinType": { "type": "string", "description": "Detected skin type" },
+        "glowScore": { "type": "number", "description": "Overall glow score (1-100)" },
+        "concerns": { "type": "array", "items": { "type": "string" }, "description": "Identified skin concerns" },
+        "tips": { "type": "array", "items": { "type": "string" }, "description": "AI-generated tips" },
+        "summary": { "type": "string", "description": "AI-generated summary" },
+        "scoreBreakdown": {
+          "type": "object",
+          "properties": {
+            "hydration": { "type": "number" },
+            "texture": { "type": "number" },
+            "clarity": { "type": "number" }
+          }
+        },
+        "areaConcerns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "area": { "type": "string" },
+              "concern": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the analysis was performed" }
+      },
+      "required": ["userId", "photoUrl", "skinType", "glowScore", "concerns", "tips", "summary", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/routines/{routineId}": {
+      "schema": "RoutineItem",
+      "description": "Individual routine items"
+    },
+    "/analyses/{analysisId}": {
+      "schema": "SkinAnalysis",
+      "description": "Skin analysis records"
+    }
+  }
+}

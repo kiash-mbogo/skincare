@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - name: string (required)
+    //   - type: list of strings (required)
+    //   - concerns: list of strings (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: routines
+    // Document ID: routineId (auto-generated)
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - name: string (required)
+    //   - brand: string (required)
+    //   - completed: bool (required)
+    //   - type: string (required, 'morning' or 'night')
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: analyses
+    // Document ID: analysisId (auto-generated)
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - photoUrl: string (required)
+    //   - skinType: string (required)
+    //   - glowScore: number (required)
+    //   - concerns: list of strings (required)
+    //   - tips: list of strings (required)
+    //   - summary: string (required)
+    //   - scoreBreakdown: map (optional)
+    //   - areaConcerns: list of maps (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mbogoalvin9@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'type', 'concerns', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type is list && data.type.size() < 20 &&
+             data.concerns is list && data.concerns.size() < 20 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRoutine(data) {
+      return data.keys().hasAll(['userId', 'name', 'brand', 'completed', 'type', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.brand is string && data.brand.size() > 0 && data.brand.size() < 100 &&
+             data.completed is bool &&
+             data.type in ['morning', 'night'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['userId', 'photoUrl', 'skinType', 'glowScore', 'concerns', 'tips', 'summary', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.photoUrl is string && data.photoUrl.size() > 0 && data.photoUrl.size() < 2000 &&
+             data.skinType is string && data.skinType.size() > 0 && data.skinType.size() < 100 &&
+             data.glowScore is number && data.glowScore >= 0 && data.glowScore <= 100 &&
+             data.concerns is list && data.concerns.size() < 20 &&
+             data.tips is list && data.tips.size() < 20 &&
+             data.summary is string && data.summary.size() > 0 && data.summary.size() < 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /routines/{routineId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidRoutine(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidRoutine(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /analyses/{analysisId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidAnalysis(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidAnalysis(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+  }
+}
